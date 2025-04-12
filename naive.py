@@ -1,29 +1,69 @@
 from preprocess import process_data
 import pandas as pd
 import numpy as np
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics import ndcg_score
 
-original_df, train_df, holdout_list = process_data()
-# Mean model: compute mean rating for each joke (column-wise mean)
-joke_means = train_df.mean(skipna=True)
+def mean_model():
+    # Load data
+    original_df, train_df, holdout_list = process_data()
+
+    # Compute mean ratings for each joke
+    joke_means = train_df.mean(skipna=True)
+    return joke_means, holdout_list
+
+def evaluate(joke_means, holdout_list):
+# Group holdouts by user
+    user_to_holdouts = {}
+    for user_id, joke_id, true_rating in holdout_list:
+        user_to_holdouts.setdefault(user_id, []).append((joke_id, true_rating))
+
+    ndcg_scores = []
+
+    for user_id, holdouts in user_to_holdouts.items():
+        if len(holdouts) < 3:
+            continue  # Need at least 3 for NDCG@3
+
+        # Get joke_ids and normalized relevance scores
+        joke_ids = [jid for jid, _ in holdouts]
+        raw_ratings = [rating for _, rating in holdouts]
+
+        # Normalize ratings from [-10, 10] to [0, 1]
+        normalized_relevance = [(r + 10) / 20 for r in raw_ratings]
+
+        # Get predicted joke scores from mean model
+        predicted_scores = [joke_means.get(jid, 0) for jid in joke_ids]
+
+        # Format for ndcg_score (expects 2D)
+        y_true = np.array([normalized_relevance])
+        y_score = np.array([predicted_scores])
+
+        score = ndcg_score(y_true, y_score, k=3)
+        ndcg_scores.append(score)
+
+        return ndcg_scores
+
+def recommend_top_jokes(user_ratings): # for demo, pass in array of user ratings.
+    joke_means, _ = mean_model()
+    joke_columns = ['J5', 'J7', 'J8', 'J13', 'J15', 'J16', 'J17', 'J18', 'J19', 'J20']
+
+    unrated_indices = [i for i, r in enumerate(user_ratings) if pd.isna(r)]
+    
+    if len(unrated_indices) < 3:
+        raise ValueError("At least 3 NaNs (unrated jokes) are required to make recommendations.")
+    
+    # Gather predictions for unrated jokes using mean model
+    preds = [(joke_columns[i], joke_means.get(joke_columns[i], 0)) for i in unrated_indices]
+    
+    # Sort by predicted mean rating, descending
+    sorted_preds = sorted(preds, key=lambda x: x[1], reverse=True)
+    
+    # Return top 3 joke column names
+    return [joke_id for joke_id, _ in sorted_preds[:3]]
 
 
-# Step 1: Compute mean rating for each joke (ignoring NaNs)
-joke_means = train_df.mean(skipna=True)
+if __name__ == "__main__":
+    model_data, holdouts = mean_model()
+    ndcg_scores = evaluate(model_data, holdouts)
 
-# Step 2: Predict for each holdout and compare
-predictions = []
-actuals = []
-
-for user_id, joke_id, true_rating in holdout_list:
-    pred = joke_means.get(joke_id, 0)  # fallback to 0 if joke_id is missing for any reason
-    predictions.append(pred)
-    actuals.append(true_rating)
-
-# Step 3: Evaluate
-rmse = np.sqrt(mean_squared_error(actuals, predictions))
-mae = mean_absolute_error(actuals, predictions)
-
-print(f"RMSE: {rmse:.3f}")
-print(f"MAE: {mae:.3f}")
-
+    print(f"Average NDCG@3 (with normalized ratings): {np.mean(ndcg_scores):.3f}")
+    print(recommend_top_jokes([8.5, np.nan, -4.0, np.nan, 7.0, 2.5, np.nan, 1.0, -2.5, 4.5]))
