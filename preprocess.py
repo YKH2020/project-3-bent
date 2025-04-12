@@ -5,7 +5,7 @@ import random
 
 def process_data():
     # Config
-    holdouts_per_user = 2
+    holdouts_per_user = 4
     random.seed(42)
     np.random.seed(42)
 
