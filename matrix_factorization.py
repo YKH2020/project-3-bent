@@ -61,7 +61,7 @@ def train(train_matrix,val_holdout_list):
             training_loss = reconstruction_loss + regularization_loss
 
             val_loss = cal_l2_loss(user_features, item_features, val_holdout_list, train_matrix)
-            val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix)
+            val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix,1)
             print(f'Epoch {epoch}, Training Loss: {training_loss}', 
                   f'Validation Loss: {val_loss}',
                   f"Validation NDCG: {val_ndcg}")
@@ -71,7 +71,7 @@ def train(train_matrix,val_holdout_list):
     final_reg_loss = regularization * (np.sum(user_features**2) + np.sum(item_features**2))
     final_training_loss = final_rec_loss + final_reg_loss
     final_val_loss = cal_l2_loss(user_features, item_features, val_holdout_list, train_matrix)
-    final_val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix)
+    final_val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix,1)
 
     return user_features, item_features, final_training_loss, final_val_loss, final_val_ndcg
 
@@ -206,8 +206,8 @@ def main():
     # Train the model
     user_features, item_features, train_rmse, val_rmse, final_val_ndcg = train(train_matrix,val_holdout_list)
 
-    calculated_ndcg = cal_ndcg(user_features, item_features, test_holdout_list, original_matrix)
-    
+    calculated_ndcg = cal_ndcg(user_features, item_features, test_holdout_list, original_matrix,3)
+
     print(f'Train RMSE: {train_rmse}')
     print(f'Val RMSE: {val_rmse}')
     print(f'Val NDCG: {final_val_ndcg}')
