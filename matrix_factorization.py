@@ -2,9 +2,8 @@ from preprocess import process_data
 import numpy as np
 import pandas as pd
 from collections import defaultdict
-from sklearn.decomposition import TruncatedSVD
 
-def train(train_matrix,val_holdout_list):
+def train(train_matrix,val_holdout_list, checkpoint_interval=1000, num_epochs=10000, num_features=10, learning_rate=0.01, regularization=0.02):
     """
     Train a matrix factorization model using stochastic gradient descent (SGD) on the training matrix.
     Parameters:
@@ -20,22 +19,21 @@ def train(train_matrix,val_holdout_list):
     # Convert DataFrame to numpy array
     train_matrix_converted = train_matrix.to_numpy()
 
-    # L1 nomalization
+    # Z-score normalization
 
-    # Row-wise min and max, ignoring NaNs
-    row_min = np.nanmin(train_matrix_converted, axis=1, keepdims=True)
-    row_max = np.nanmax(train_matrix_converted, axis=1, keepdims=True)
+    # Row-wise mean and std, ignoring NaNs
+    row_means = np.nanmean(train_matrix_converted, axis=1, keepdims=True)
+    row_stds  = np.nanstd(train_matrix_converted, axis=1, keepdims=True)
 
-    # Normalize: (x - min) / (max - min), ignoring NaNs
-    normalized_train_matrix = (train_matrix_converted - row_min) / (row_max - row_min + 1e-8)
+    # Avoid division by zero
+    row_stds[row_stds < 1e-8] = 1.0
+
+    # Z-score transform per row
+    normalized_train_matrix = (train_matrix_converted - row_means) / (row_stds+1e-8)
 
     # Set hyperparameters
     num_users, num_items = train_matrix.shape
-    num_features = 10
-    learning_rate = 0.01
-    regularization = 0.02
-    num_epochs = 10000
-
+    
     # Initialize user and item latent feature matrices
 
     user_features = np.random.normal(scale=1./np.sqrt(num_features), size=(num_users, num_features))
@@ -54,28 +52,38 @@ def train(train_matrix,val_holdout_list):
                     user_features[user_id] += learning_rate * (error * item_features[item_id] - regularization * user_features[user_id])
                     item_features[item_id] += learning_rate * (error * user_features[user_id] - regularization * item_features[item_id])
 
-        # Optional: Print loss every 100 epochs
-        if epoch % 100 == 0:
-            reconstruction_loss = np.nansum((normalized_train_matrix - np.dot(user_features, item_features.T)) ** 2)
-            regularization_loss = regularization * (np.sum(user_features**2) + np.sum(item_features**2))
+        if epoch > 0 and epoch % checkpoint_interval == 0:
+            # Save user_features and item_features as NumPy arrays
+            checkpoint_path = f"checkpoint_epoch_{epoch}.npz"
+            np.savez(checkpoint_path,
+                    user_features=user_features,
+                    item_features=item_features)
+            print(f"Checkpoint saved: {checkpoint_path}")
+
+        # Print loss every 100 epochs
+        if epoch % 10 == 0:
+            reconstruction_loss = np.nanmean((normalized_train_matrix - np.dot(user_features, item_features.T)) ** 2)
+            regularization_loss = regularization * (np.nansum(user_features**2) + np.nansum(item_features**2))/ np.sum(~np.isnan(normalized_train_matrix))
             training_loss = reconstruction_loss + regularization_loss
 
-            val_loss = cal_l2_loss(user_features, item_features, val_holdout_list, train_matrix)
+
+            val_loss = cal_l2_loss(user_features, item_features, val_holdout_list, train_matrix, row_means, row_stds)
             val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix,1)
             print(f'Epoch {epoch}, Training Loss: {training_loss}', 
                   f'Validation Loss: {val_loss}',
                   f"Validation NDCG: {val_ndcg}")
 
+
     # Final loss
-    final_rec_loss = np.nansum((normalized_train_matrix - np.dot(user_features, item_features.T)) ** 2)
-    final_reg_loss = regularization * (np.sum(user_features**2) + np.sum(item_features**2))
+    final_rec_loss = (np.nanmean((normalized_train_matrix - np.dot(user_features, item_features.T)) ** 2))
+    final_reg_loss = regularization * (np.nansum(user_features**2) + np.nansum(item_features**2))
     final_training_loss = final_rec_loss + final_reg_loss
-    final_val_loss = cal_l2_loss(user_features, item_features, val_holdout_list, train_matrix)
+    final_val_loss = cal_l2_loss(user_features, item_features, val_holdout_list, train_matrix, row_means, row_stds)
     final_val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix,1)
 
-    return user_features, item_features, final_training_loss, final_val_loss, final_val_ndcg
+    return user_features, item_features, final_training_loss, final_val_loss, final_val_ndcg, row_means, row_stds
 
-def cal_l2_loss(user_features, item_features, holdout_list, original_matrix):
+def cal_l2_loss(user_features, item_features, holdout_list, original_matrix, row_means=None, row_stds=None):
 
     """
     Calculate the L2 loss for the holdout set.
@@ -85,26 +93,45 @@ def cal_l2_loss(user_features, item_features, holdout_list, original_matrix):
     - holdout_list: List of tuples (user_id, item_id, true_rating) for evaluation.
     - original_matrix: The original DataFrame containing the ratings.
     Returns:
-    - average_rmse: The average RMSE across all users.
+    - mse: Mean Squared Error for the holdout set.
     """
 
     # reconstruct the matrix to DataFrame format
     reconstructed_matrix = np.dot(user_features, item_features.T)
 
-    # Convert to DataFrame
-    reconstructed_df = pd.DataFrame(reconstructed_matrix, index=original_matrix.index, columns=original_matrix.columns)
+    # Convert to DataFrame (same index & columns as original)
+    reconstructed_df = pd.DataFrame(
+        reconstructed_matrix,
+        index=original_matrix.index,
+        columns=original_matrix.columns
+    )
 
-    # Calculate RMSE for holdout set
-    rmse_list = []
+    user2idx = {uid: idx for idx, uid in enumerate(original_matrix.index)}
+
+    mse_list = []
     for user_id, joke_id, true_rating in holdout_list:
-        predicted_rating = reconstructed_df.at[user_id, joke_id]
-        rmse = np.sqrt((predicted_rating - true_rating) ** 2)
-        rmse_list.append(rmse)
-    
-    # Calculate average RMSE
-    average_rmse = np.mean(rmse_list)
+        user_idx = user2idx[user_id]
 
-    return average_rmse
+        # If the user never had a min or max, it might be all NaN. 
+        # Typically, you'd skip or handle carefully. 
+        mean_val = row_means[user_idx, 0]
+        std_val = row_stds[user_idx, 0]
+
+        # Get predicted rating from reconstructed matrix:
+        predicted_rating = reconstructed_df.at[user_id, joke_id]
+
+        # Denormalize the true rating
+        denormalized_prediction = predicted_rating * (std_val + 1e-8) + mean_val        
+
+        # Compute error in normalized space
+        error = denormalized_prediction - true_rating
+    
+        mse_list.append((error**2))
+
+    mse = np.mean(mse_list)
+
+   
+    return mse
 
 
 
@@ -165,6 +192,9 @@ def cal_ndcg(user_features, item_features, holdout_list, original_matrix, k=3):
     for user_id, item_id, true_rating in holdout_list:
         user2holdouts[user_id].append((item_id, true_rating))
 
+    # Create a user -> index map for accessing row_means/row_stds
+    user2idx = {uid: idx for idx, uid in enumerate(original_matrix.index)}
+
     ndcg_scores = []
 
     # 4) For each user, rank ONLY their holdout items by predicted score
@@ -182,13 +212,22 @@ def cal_ndcg(user_features, item_features, holdout_list, original_matrix, k=3):
         for item in holdout_items:
             pred_score = reconstructed_df.at[user_id, item]
             predicted_scores.append(pred_score)
-        
+
+        # --- Revised Normalization: Scale true ratings to [0, 1] ---
+        min_rating = min(holdout_true_ratings)
+        max_rating = max(holdout_true_ratings)
+        if max_rating - min_rating > 1e-8:
+            normed_true_ratings = [(r - min_rating) / (max_rating - min_rating) for r in holdout_true_ratings]
+        else:
+            # If all ratings are nearly equal, assign a default relevance (e.g., all 0 or 1)
+            normed_true_ratings = [1.0 for _ in holdout_true_ratings]
+
         # Sort the holdout items by predicted score (descending)
         # We'll get the indices that sort predicted_scores in descending order
         sorted_indices = np.argsort(predicted_scores)[::-1]
         
         # Re-order the true ratings based on the predicted order
-        ranked_relevances = [holdout_true_ratings[i] for i in sorted_indices]
+        ranked_relevances = [normed_true_ratings[i] for i in sorted_indices]
 
         # 4. Compute NDCG@k for this user's holdout-based ranking
         user_ndcg = ndcg_at_k(ranked_relevances, k)
@@ -204,12 +243,12 @@ def main():
     original_matrix, train_matrix, val_holdout_list, test_holdout_list = process_data()
 
     # Train the model
-    user_features, item_features, train_rmse, val_rmse, final_val_ndcg = train(train_matrix,val_holdout_list)
+    user_features, item_features, train_mse, val_mse, final_val_ndcg, row_means, row_stds = train(train_matrix,val_holdout_list)
 
     calculated_ndcg = cal_ndcg(user_features, item_features, test_holdout_list, original_matrix,3)
 
-    print(f'Train RMSE: {train_rmse}')
-    print(f'Val RMSE: {val_rmse}')
+    print(f'Train MSE: {train_mse}')
+    print(f'Val MSE: {val_mse}')
     print(f'Val NDCG: {final_val_ndcg}')
     print(f'Test NDCG: {calculated_ndcg}')
 

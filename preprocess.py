@@ -32,7 +32,7 @@ def process_data():
         valid_jokes = user_ratings.dropna().index.tolist()
 
         # Ensure enough ratings to hold out
-        if len(valid_jokes) <= total_holdouts:
+        if len(valid_jokes) <= total_holdouts + 4:
             continue
 
         # Randomly select total_holdouts
