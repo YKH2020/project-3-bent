@@ -1,7 +1,6 @@
 from preprocess import process_data
 import pandas as pd
 import numpy as np
-from sklearn.metrics import ndcg_score
 
 def mean_model():
     # Load data
