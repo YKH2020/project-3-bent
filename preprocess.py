@@ -6,7 +6,7 @@ import random
 def process_data():
     # Config
     val_holdouts = 2
-    test_holdouts = 4
+    test_holdouts = 3
     total_holdouts = val_holdouts + test_holdouts
     random.seed(42)
     np.random.seed(42)
@@ -18,7 +18,7 @@ def process_data():
 
     # Adjust for zero indexing
     df = df.replace(99.0, np.nan)
-    sub_df = df.iloc[:, [2, 5, 7, 8, 10, 13, 15, 16, 17, 18, 19, 20]]
+    sub_df = df.iloc[:, [5, 7, 8, 13, 15, 16, 17, 18, 19, 20]]
 
     # Prepare training matrix and holdouts
     train_matrix = sub_df.copy()
