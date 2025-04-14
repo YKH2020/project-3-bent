@@ -5,11 +5,10 @@ from sklearn.metrics import ndcg_score
 
 def mean_model():
     # Load data
-    original_df, train_df, holdout_list = process_data()
-
+    original_df, train_df, val, holdout_list = process_data()
     # Compute mean ratings for each joke
     joke_means = train_df.mean(skipna=True)
-    return joke_means, holdout_list
+    return joke_means, train_df, holdout_list
 
 def evaluate(joke_means, holdout_list):
 # Group holdouts by user
@@ -40,10 +39,11 @@ def evaluate(joke_means, holdout_list):
         score = ndcg_score(y_true, y_score, k=3)
         ndcg_scores.append(score)
 
-        return ndcg_scores
+    return ndcg_scores
 
-def recommend_top_jokes(user_ratings): # for demo, pass in array of user ratings.
-    joke_means, _ = mean_model()
+def recommend_top_jokes(user): # for demo, pass in array of user ratings.
+    joke_means, data, _ = mean_model()
+    user_ratings = list(data.loc[user])
     joke_columns = ['J5', 'J7', 'J8', 'J13', 'J15', 'J16', 'J17', 'J18', 'J19', 'J20']
 
     unrated_indices = [i for i, r in enumerate(user_ratings) if pd.isna(r)]
@@ -62,8 +62,8 @@ def recommend_top_jokes(user_ratings): # for demo, pass in array of user ratings
 
 
 if __name__ == "__main__":
-    model_data, holdouts = mean_model()
+    model_data, _, holdouts = mean_model()
     ndcg_scores = evaluate(model_data, holdouts)
 
     print(f"Average NDCG@3 (with normalized ratings): {np.mean(ndcg_scores):.3f}")
-    print(recommend_top_jokes([8.5, np.nan, -4.0, np.nan, 7.0, 2.5, np.nan, 1.0, -2.5, 4.5]))
+    print(recommend_top_jokes('user_1'))  # Example user for recommendation
