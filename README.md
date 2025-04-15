@@ -1,5 +1,8 @@
 # project-3-bent
 
+## Motivation
+It is often hard to gauge a sense of humor and find jokes that align with what people like, so we decided to create a recommendation model that attempts to judge opinions on jokes and gives recommendations.
+
 ## Data
 Our data is from the Jesters Datasets found here: https://eigentaste.berkeley.edu/dataset/. It is composed of many users who rated many jokes from -10 to 10.
 
