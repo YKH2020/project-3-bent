@@ -4,8 +4,8 @@ from preprocess import process_data
 
 def inference(user_index,k=3):
 
-    user_features = np.load('checkpoint_epoch_6000.npz')['user_features']
-    item_features = np.load('checkpoint_epoch_6000.npz')['item_features']
+    user_features = np.load('traditional_ml_model.npz')['user_features']
+    item_features = np.load('traditional_ml_model.npz')['item_features']
     original_matrix, _, _, test_holdout_list = process_data()
 
     # Reconstruct the matrix using user and item features

@@ -5,7 +5,7 @@ from collections import defaultdict
 def accuracy(user_features, item_features, holdout_list, original_matrix):
 
     """
-    Calculate the accuracy of the top-1 recommendation for the holdout items.
+    Calculate the accuracy of the top-1 joke recommendation for the test set.
     """
 
     # 1) Reconstruct the matrix: U * V^T
@@ -51,7 +51,7 @@ def test():
     Test the matrix factorization model with loaded user and item features
     """
     # load user_features, item_features
-    checkpoint = np.load('checkpoint_epoch_6000.npz')
+    checkpoint = np.load('traditional_ml_model.npz')
 
     # Extract user and item features from the checkpoint
     user_features = checkpoint['user_features']
