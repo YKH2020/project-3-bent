@@ -53,3 +53,25 @@ and it is deployed on streamlit cloud.
 
 ## Ethics
 This dataset is for open source but the original source should be listed for credit. Our joke recommender models are for free use as well. The data and models should not be used for malicious intent and should be used to further research.
+
+## Run the model
+
+### Preprocess:  
+python preprocess.py  
+
+### Naive Approach:   
+python naive.py   
+
+### Traditional ML Approach:  
+Train   
+python matrix_factorization_train.py   
+
+Test
+python matrix_factorization_test.py   
+
+Inference    
+python matrix_factorization_inference.py   
+
+### DL Approach:
+python dl.py
+
