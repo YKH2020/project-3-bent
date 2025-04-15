@@ -1,5 +1,7 @@
 # project-3-bent
 
+## Prior Efforts
+
 ## Motivation
 It is often hard to gauge a sense of humor and find jokes that align with what people like, so we decided to create a recommendation model that attempts to judge opinions on jokes and gives recommendations.
 
