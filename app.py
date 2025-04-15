@@ -2,7 +2,7 @@ import streamlit as st
 from scripts.naive import recommend_top_joke
 from scripts.get_jokes import read_clean_joke_text
 from scripts.input_joke import get_best_joke_for_user
-from matrix_factorization_inference import inference
+from scripts.matrix_factorization_inference import inference
 
 # mapping user names to ids
 users = {
