@@ -90,7 +90,6 @@ def train(train_matrix,val_holdout_list, checkpoint_interval=1000, num_epochs=10
     return user_features, item_features, final_training_loss, final_val_loss, final_val_ndcg, row_means, row_stds
 
 def cal_l2_loss(user_features, item_features, holdout_list, original_matrix, row_means=None, row_stds=None):
-
     """
     Calculate the L2 loss for the holdout set.
     Parameters:
@@ -154,6 +153,7 @@ def cal_ndcg(user_features, item_features, holdout_list, original_matrix, k=3,ro
     - holdout_list: List of tuples (user_id, item_id, true_rating) for evaluation.
     - original_matrix: The original DataFrame containing the ratings.
     - k: The rank at which to compute NDCG (default is 3).
+    - row_means: Row means for normalization.
     Returns:
     - average_ndcg: The average NDCG@k score across all users.
 

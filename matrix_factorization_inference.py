@@ -2,8 +2,17 @@ import pandas as pd
 import numpy as np
 from preprocess import process_data
 
-def inference(user_index,k=3):
-
+def inference(user_index):
+    """
+    Inference function to recommend top-1 joke for a given user using matrix factorization.
+    It loads the user and item features from a pre-trained model, reconstructs the rating matrix,
+    and predicts the top-1 joke for the specified user.     
+    Parameters:
+    user_index (int): The index of the user for whom to recommend a joke.
+    Returns:
+    str: The ID of the top-1 recommended joke for the user.   
+    """
+    
     user_features = np.load('traditional_ml_model.npz')['user_features']
     item_features = np.load('traditional_ml_model.npz')['item_features']
     original_matrix, _, _, test_holdout_list = process_data()
@@ -26,10 +35,10 @@ def inference(user_index,k=3):
             predicted_scores[joke_id] = predicted_score
 
     sorted_jokes = [key for key, value in sorted(predicted_scores.items(), key=lambda x: x[1], reverse=True)]
-    top_k_jokes = sorted_jokes[:k]
+    top_1_jokes = sorted_jokes[0]
 
-    print(f"Top {k} jokes for user_{user_index}: {top_k_jokes}")
-    return top_k_jokes[0]
+    print(f"Top 1 joke for user_{user_index}: {top_1_jokes}")
+    return top_1_jokes
 
     
 if __name__ == "__main__":

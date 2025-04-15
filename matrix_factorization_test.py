@@ -2,10 +2,23 @@ import numpy as np
 from preprocess import process_data
 import pandas as pd
 from collections import defaultdict
-def accuracy(user_features, item_features, holdout_list, original_matrix):
 
+def accuracy(user_features, item_features, holdout_list, original_matrix):
     """
     Calculate the accuracy of the top-1 joke recommendation for the test set.
+    The function reconstructs the rating matrix using the user and item features,
+    and then ranks the holdout items for each user based on the predicted scores.
+    The accuracy is defined as the proportion of users for whom the top-1 predicted joke
+    matches the true rating.
+
+    Parameters:
+    user_features (numpy.ndarray): User feature matrix.
+    item_features (numpy.ndarray): Item feature matrix.
+    holdout_list (list): List of tuples containing user_id, item_id, and true_rating for holdout items.
+    original_matrix (pandas.DataFrame): The original rating matrix.
+
+    Returns:
+    float: The accuracy of the top-1 joke recommendation.
     """
 
     # 1) Reconstruct the matrix: U * V^T
@@ -50,6 +63,7 @@ def test():
     """
     Test the matrix factorization model with loaded user and item features
     """
+    
     # load user_features, item_features
     checkpoint = np.load('traditional_ml_model.npz')
 

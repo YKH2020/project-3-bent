@@ -4,6 +4,10 @@ import random
 
 
 def process_data():
+    """
+    Preprocess the Jester dataset for matrix factorization.
+    """
+    
     # Config
     val_holdouts = 2
     test_holdouts = 3
