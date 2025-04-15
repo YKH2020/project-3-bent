@@ -29,7 +29,7 @@ def inference(user_index,k=3):
     top_k_jokes = sorted_jokes[:k]
 
     print(f"Top {k} jokes for user_{user_index}: {top_k_jokes}")
-    return top_k_jokes
+    return top_k_jokes[0]
 
     
 if __name__ == "__main__":
