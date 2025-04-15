@@ -47,7 +47,7 @@ def evaluate(joke_means, holdout_list):
     return accuracy
 
 
-def recommend_top_joke(user):  # For demo, pass in array of user ratings.
+def recommend_top_joke(user): 
     joke_means, data, _ = mean_model()
     user_ratings = list(data.loc[user])
     joke_columns = ['J5', 'J7', 'J8', 'J13', 'J15', 'J16', 'J17', 'J18', 'J19', 'J20']
