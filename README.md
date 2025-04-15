@@ -30,6 +30,7 @@ We saved the trained model as traditional_ml_model.npz for downstream test and i
 
 ## Eval
 The naive approach had an accuracy of .422.    
+       
 The traditional ml approach (matrix factorization) had an accuracy of .403.
 
 ## Demo
