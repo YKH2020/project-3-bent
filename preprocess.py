@@ -16,7 +16,7 @@ def process_data():
     np.random.seed(42)
 
     # Load Excel, skip the first column (num_rated)
-    df = pd.read_excel('jester-data-1.xls', header=None)
+    df = pd.read_excel('data/jester-data-1.xls', header=None)
     df.index = [f'user_{i}' for i in range(len(df))]
     df.columns = ['total'] + [f'J{i}' for i in range(1, 101)]
 
