@@ -14,7 +14,11 @@ The naive approach used a mean model. Jokes were recommended based on the mean s
 
 ## Non-Deep Learning
 
-We implemented a traditional machine learning-based recommendation system using Matrix Factorization with Stochastic Gradient Descent (SGD). Each user and joke is represented in a shared latent space, enabling personalized joke predictions based on the dot product of learned feature vectors. For the processing of the input, we used Z-scored normalization to account for rating scale differences across users. We used SGD optimizer with L2 regularization with a value of 0.02 as the regularization parameter. In the training process, we set the learning rate as 0.01 to make sure that the model parametes have a decent update in each step. We used periodic evaluation using MSE and NDCG@k on validation sets to monitor the training process. In the training process, we noticed that the model reached its best performance on validation set at about 6000 epochs and we stopped training at that point to prevent overfitting. We saved the trained model as traditional_ml_model.npz for downstream test and inference.
+We implemented a traditional machine learning-based recommendation system using Matrix Factorization with Stochastic Gradient Descent (SGD). Each user and joke is represented in a shared latent space, enabling personalized joke predictions based on the dot product of learned feature vectors.     
+To process the data, we used Z-scored normalization to account for rating scale differences across users. This transformation helps account for differences in individual rating scales and ensures that the model learns patterns that are independent of users' rating biases.  
+We used SGD optimizer with L2 regularization with a value of 0.02 as the regularization parameter. In the training process, we set the learning rate as 0.01 to balance the convergence speed and stability, ensuring that model parameters receive meaningful updates at each step.   
+We used periodic evaluation using MSE and NDCG@k on validation sets to monitor the training process. In the training process, we noticed that the model reached its best performance on validation set at about 6000 epochs and we stopped training at that point to prevent overfitting.   
+We saved the trained model as traditional_ml_model.npz for downstream test and inference.
 
 ## Deep Learning
 
