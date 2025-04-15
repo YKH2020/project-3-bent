@@ -5,7 +5,9 @@ import random
 
 def process_data():
     # Config
-    holdouts_per_user = 4
+    val_holdouts = 2
+    test_holdouts = 3
+    total_holdouts = val_holdouts + test_holdouts
     random.seed(42)
     np.random.seed(42)
 
@@ -20,23 +22,35 @@ def process_data():
 
     # Prepare training matrix and holdouts
     train_matrix = sub_df.copy()
-    holdout_list = []
-
+    val_holdout_list = []
+    test_holdout_list = []
+    
     for user_id in train_matrix.index:
         user_ratings = train_matrix.loc[user_id]
 
         # Valid jokes are the ones this user rated (not NaN)
         valid_jokes = user_ratings.dropna().index.tolist()
 
-        if len(valid_jokes) <= holdouts_per_user:
+        # Ensure enough ratings to hold out
+        if len(valid_jokes) <= total_holdouts + 4:
             continue
 
-        # Randomly choose holdouts
-        holdout_jokes = np.random.choice(valid_jokes, size=holdouts_per_user, replace=False)
+        # Randomly select total_holdouts
+        selected_holdouts = np.random.choice(valid_jokes, size=total_holdouts, replace=False)
+        
+        # Split into val and test sets
+        val_jokes = selected_holdouts[:val_holdouts]
+        test_jokes = selected_holdouts[val_holdouts:]
 
-        for joke_id in holdout_jokes:
+        for joke_id in val_jokes:
             true_rating = train_matrix.at[user_id, joke_id]
-            holdout_list.append((user_id, joke_id, true_rating))
-            train_matrix.at[user_id, joke_id] = np.nan  # Mask the rating
+            val_holdout_list.append((user_id, joke_id, true_rating))
+            train_matrix.at[user_id, joke_id] = np.nan  # Mask rating
 
-    return sub_df, train_matrix, holdout_list
+        for joke_id in test_jokes:
+            true_rating = train_matrix.at[user_id, joke_id]
+            test_holdout_list.append((user_id, joke_id, true_rating))
+            train_matrix.at[user_id, joke_id] = np.nan  # Mask rating
+    
+    # Output: train_matrix, val_holdout_list, test_holdout_list
+    return sub_df, train_matrix, val_holdout_list, test_holdout_list
