@@ -57,21 +57,21 @@ This dataset is for open source but the original source should be listed for cre
 ## Run the model
 
 ### Preprocess:  
-python preprocess.py  
+`python preprocess.py ` 
 
 ### Naive Approach:   
-python naive.py   
+`python naive.py`   
 
 ### Traditional ML Approach:  
 Train   
-python matrix_factorization_train.py   
+`python matrix_factorization_train.py`   
 
 Test
-python matrix_factorization_test.py   
+`python matrix_factorization_test.py`  
 
 Inference    
-python matrix_factorization_inference.py   
+`python matrix_factorization_inference.py`   
 
 ### DL Approach:
-python dl.py
+`python dl.py`
 
