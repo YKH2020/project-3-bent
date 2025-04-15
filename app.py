@@ -1,7 +1,7 @@
 import streamlit as st
-from naive import recommend_top_joke
-from get_jokes import read_clean_joke_text
-from input_joke import get_best_joke_for_user
+from scripts.naive import recommend_top_joke
+from scripts.get_jokes import read_clean_joke_text
+from scripts.input_joke import get_best_joke_for_user
 from matrix_factorization_inference import inference
 
 # mapping user names to ids
@@ -34,7 +34,7 @@ def run_non_dl(user):
         joke_id = inference(users.get(user))
         st.write(read_clean_joke_text(joke_id)[joke_id])
 
-def run_dl():
+def run_dl(user):
     '''
     This function calls the deep learning predict method
 
