@@ -19,3 +19,4 @@ The naive approach had an accuracy of .422.
 ## Demo
 
 ## Ethics
+This dataset is for open source but the original source should be listed for credit. Our joke recommender models are for free use as well. The data and models should not be used for malicious intent and should be used to further research.
