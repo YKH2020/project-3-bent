@@ -74,7 +74,7 @@ def train(train_matrix,val_holdout_list, checkpoint_interval=1000, num_epochs=10
 
 
             val_loss = cal_l2_loss(user_features, item_features, val_holdout_list, train_matrix, row_means, row_stds)
-            val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix,1)
+            val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix,1,row_means)
             print(f'Epoch {epoch}, Training Loss: {training_loss}', 
                   f'Validation Loss: {val_loss}',
                   f"Validation NDCG: {val_ndcg}")
@@ -85,7 +85,7 @@ def train(train_matrix,val_holdout_list, checkpoint_interval=1000, num_epochs=10
     final_reg_loss = regularization * (np.nansum(user_features**2) + np.nansum(item_features**2))/ np.sum(~np.isnan(normalized_train_matrix))
     final_training_loss = final_rec_loss + final_reg_loss
     final_val_loss = cal_l2_loss(user_features, item_features, val_holdout_list, train_matrix, row_means, row_stds)
-    final_val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix,1)
+    final_val_ndcg = cal_ndcg(user_features, item_features, val_holdout_list, train_matrix,1,row_means)
 
     return user_features, item_features, final_training_loss, final_val_loss, final_val_ndcg, row_means, row_stds
 
@@ -143,7 +143,7 @@ def cal_l2_loss(user_features, item_features, holdout_list, original_matrix, row
 
 
 
-def cal_ndcg(user_features, item_features, holdout_list, original_matrix, k=3):
+def cal_ndcg(user_features, item_features, holdout_list, original_matrix, k=3,row_means=None):
     """
     Calculate the average NDCG@k for a recommendation system
     using matrix factorization.
@@ -200,6 +200,8 @@ def cal_ndcg(user_features, item_features, holdout_list, original_matrix, k=3):
     for user_id, item_id, true_rating in holdout_list:
         user2holdouts[user_id].append((item_id, true_rating))
 
+    user2idx = {uid: idx for idx, uid in enumerate(original_matrix.index)}
+
     ndcg_scores = []
 
     # 4) For each user, rank ONLY their holdout items by predicted score
@@ -218,14 +220,9 @@ def cal_ndcg(user_features, item_features, holdout_list, original_matrix, k=3):
             pred_score = reconstructed_df.at[user_id, item]
             predicted_scores.append(pred_score)
 
-        # --- Revised Normalization: Scale true ratings to [0, 1] ---
-        min_rating = min(holdout_true_ratings)
-        max_rating = max(holdout_true_ratings)
-        if max_rating - min_rating > 1e-8:
-            normed_true_ratings = [(r - min_rating) / (max_rating - min_rating) for r in holdout_true_ratings]
-        else:
-            # If all ratings are nearly equal, assign a default relevance (e.g., all 0 or 1)
-            normed_true_ratings = [1.0 for _ in holdout_true_ratings]
+        # Normalize the true ratings for this user and make sure all ratings are positive
+        user_idx = user2idx[user_id]
+        normed_true_ratings = [(r - row_means[user_idx,0])+20 for r in holdout_true_ratings]
 
         # Sort the holdout items by predicted score (descending)
         # We'll get the indices that sort predicted_scores in descending order
@@ -249,7 +246,7 @@ def main():
     # Train the model
     user_features, item_features, train_mse, val_mse, final_val_ndcg, row_means, row_stds = train(train_matrix,val_holdout_list)
 
-    calculated_ndcg = cal_ndcg(user_features, item_features, test_holdout_list, original_matrix,3)
+    calculated_ndcg = cal_ndcg(user_features, item_features, test_holdout_list, original_matrix,3,row_means)
 
     print(f'Train MSE: {train_mse}')
     print(f'Val MSE: {val_mse}')
