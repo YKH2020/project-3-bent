@@ -63,13 +63,13 @@ This dataset is for open source but the original source should be listed for cre
 `python naive.py`   
 
 ### Traditional ML Approach:  
-Train   
+#### Train   
 `python matrix_factorization_train.py`   
 
-Test
+#### Test   
 `python matrix_factorization_test.py`  
 
-Inference    
+#### Inference    
 `python matrix_factorization_inference.py`   
 
 ### DL Approach:
