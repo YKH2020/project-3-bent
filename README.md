@@ -36,6 +36,8 @@ We saved the trained model as traditional_ml_model.npz for downstream test and i
 We implemented a custom autoencoder that took our dense sub matrix of jokes, where all users in the dataset had 10 jokes associated with them. The final layer uses tanh to further squash the latent space after dimensionality reduction in the hidden layers. The model recommends the best joke for a given user based on the accuracy of the user's jokes' reconstructions after the decoder output. The joke with the lowest loss in the test set is chosen as the best joke for our user.
 
 ## Eval
+We chose the accuracy of recommending the best joke for each user in the corresponding holdout list. In naive approach, jokes were recommended based on the mean score across all other users who rated that joke. Jokes with the highest mean were recommended. In traditional machine learning and deep learning approaches, We got the ratings for each joke in the holdout list and we picked the joke with highest predicted rating for each user. The accuracy of recommending the best joke in the holdout list was used as our evaluation metrics.
+      
 The naive approach had an accuracy of .422.    
        
 The traditional ml approach (matrix factorization) had an accuracy of .403.
