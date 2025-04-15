@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import matplotlib.pyplot as plt
 import random
+from collections import defaultdict
 
 # -------------------------------- Process Data -------------------------------- #
 def process_data():
@@ -48,6 +48,38 @@ def process_data():
 
     return sub_df, train_matrix, val_holdout_list, test_holdout_list
 
+# ---------------------------- Top-K Hits Accuracy --------------------------- #
+def compute_top1_hit_accuracy(test_holdout_list, reconstructed_df):
+    """
+    Compute Top-1 Hit Accuracy:
+    For each user, check if the item with the highest predicted score
+    in their test holdouts is also the one with the highest true rating.
+    """
+    user2preds = defaultdict(list)
+    for user_id, joke_id, true_rating in test_holdout_list:
+        pred_rating = reconstructed_df.at[user_id, joke_id]
+        user2preds[user_id].append((joke_id, true_rating, pred_rating))
+
+    hits = 0
+    total = 0
+
+    for user_id, triples in user2preds.items():
+        if len(triples) < 2:
+            continue  # need at least two items to rank
+
+        # Sort by predicted and true rating
+        sorted_by_pred = sorted(triples, key=lambda x: x[2], reverse=True)
+        sorted_by_true = sorted(triples, key=lambda x: x[1], reverse=True)
+
+        best_pred_joke = sorted_by_pred[0][0]
+        best_true_joke = sorted_by_true[0][0]
+
+        if best_pred_joke == best_true_joke:
+            hits += 1
+        total += 1
+
+    return hits / total if total > 0 else 0.0
+
 # -------------------------------- Model -------------------------------- #
 class Autoencoder(nn.Module):
     def __init__(self, input_dim, latent_dim=50):
@@ -77,7 +109,7 @@ def masked_mse_loss(preds, targets, mask):
     return torch.sum(diff ** 2) / torch.sum(mask)
 
 # -------------------------------- Training -------------------------------- #
-def train_autoencoder(inputs, masks, latent_dim, val_holdout_list, num_epochs=100):
+def train_autoencoder(inputs, masks, latent_dim, val_holdout_list, num_epochs=100, user_means=None, train_matrix=None):
     model = Autoencoder(input_dim=inputs.shape[1], latent_dim=latent_dim)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 
@@ -121,50 +153,56 @@ def train_autoencoder(inputs, masks, latent_dim, val_holdout_list, num_epochs=10
     return model, train_losses, val_rmses
 
 # -------------------------------- Main Script -------------------------------- #
-sub_df, train_matrix, val_holdout_list, test_holdout_list = process_data()
-mask = ~train_matrix.isna()
-user_means = train_matrix.mean(axis=1)
-normalized_data = train_matrix.sub(user_means, axis=0)
-input_data = normalized_data.fillna(0).values.astype(np.float32)
-inputs = torch.tensor(input_data)
-masks = torch.tensor(mask.values.astype(np.float32))
+def main():
+    sub_df, train_matrix, val_holdout_list, test_holdout_list = process_data()
+    mask = ~train_matrix.isna()
+    user_means = train_matrix.mean(axis=1)
+    normalized_data = train_matrix.sub(user_means, axis=0)
+    input_data = normalized_data.fillna(0).values.astype(np.float32)
+    inputs = torch.tensor(input_data)
+    masks = torch.tensor(mask.values.astype(np.float32))
 
-model, train_losses, val_rmses = train_autoencoder(inputs, masks, latent_dim=50, val_holdout_list=val_holdout_list, num_epochs=300)
+    model, train_losses, val_rmses = train_autoencoder(inputs, masks, latent_dim=50, val_holdout_list=val_holdout_list, num_epochs=300, user_means=user_means, train_matrix=train_matrix)
 
-plt.plot(train_losses, label="Train RMSE")
-plt.plot(val_rmses, label="Val RMSE")
-plt.xlabel("Epoch")
-plt.ylabel("RMSE")
-plt.title("Training vs Validation")
-plt.legend()
-plt.grid(True)
-plt.show()
+    plt.plot(train_losses, label="Train RMSE")
+    plt.plot(val_rmses, label="Val RMSE")
+    plt.xlabel("Epoch")
+    plt.ylabel("RMSE")
+    plt.title("Training vs Validation")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
-# -------------------------------- Test Evaluation -------------------------------- #
-model.eval()
-with torch.no_grad():
-    reconstructed = model(inputs).numpy()
-reconstructed += user_means.values[:, np.newaxis]
-reconstructed_df = pd.DataFrame(reconstructed, index=train_matrix.index, columns=train_matrix.columns)
+    model.eval()
+    with torch.no_grad():
+        reconstructed = model(inputs).numpy()
+    reconstructed += user_means.values[:, np.newaxis]
+    reconstructed_df = pd.DataFrame(reconstructed, index=train_matrix.index, columns=train_matrix.columns)
 
-errors = []
-for user_id, joke_id, true_rating in test_holdout_list:
-    pred = reconstructed_df.at[user_id, joke_id]
-    errors.append((user_id, joke_id, true_rating, pred, (pred - true_rating) ** 2))
+    errors = []
+    for user_id, joke_id, true_rating in test_holdout_list:
+        pred = reconstructed_df.at[user_id, joke_id]
+        errors.append((user_id, joke_id, true_rating, pred, (pred - true_rating) ** 2))
 
-error_df = pd.DataFrame(errors, columns=["user_id", "joke_id", "true_rating", "predicted", "squared_error"])
-error_df["abs_error"] = (error_df["true_rating"] - error_df["predicted"]).abs()
-test_rmse = np.sqrt(error_df["squared_error"].mean())
+    error_df = pd.DataFrame(errors, columns=["user_id", "joke_id", "true_rating", "predicted", "squared_error"])
+    error_df["abs_error"] = (error_df["true_rating"] - error_df["predicted"]).abs()
+    test_rmse = np.sqrt(error_df["squared_error"].mean())
 
-print(f"\n📊 Test RMSE: {test_rmse:.4f}")
-print("\n✅ Best Predictions:")
-print(error_df.sort_values(by="abs_error"))
+    print(f"\n📊 Test RMSE: {test_rmse:.4f}")
+    print("\n✅ Best Predictions:")
+    print(error_df.sort_values(by="abs_error"))
 
-print("\n❌ Worst Predictions:")
-print(error_df.sort_values(by="abs_error", ascending=False))
+    print("\n❌ Worst Predictions:")
+    print(error_df.sort_values(by="abs_error", ascending=False))
 
-joke_errors = error_df.groupby("joke_id")["squared_error"].mean().apply(np.sqrt).sort_values()
-print("\n📊 Joke-wise RMSE:")
-print(joke_errors)
+    joke_errors = error_df.groupby("joke_id")["squared_error"].mean().apply(np.sqrt).sort_values()
+    print("\n📊 Joke-wise RMSE:")
+    print(joke_errors)
 
-error_df.sort_values(by="abs_error").to_csv("predicted_errors.csv", index=False)
+    error_df.sort_values(by="abs_error").to_csv("predicted_errors.csv", index=False)
+
+    top1_acc = compute_top1_hit_accuracy(test_holdout_list, reconstructed_df)
+    print(f"🎯 Top-1 Hit Accuracy: {top1_acc:.4f}")
+
+if __name__ == "__main__":
+    main()
